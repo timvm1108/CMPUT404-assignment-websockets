@@ -263,7 +263,7 @@ function wsSetup() {
     socket.onopen = function() {
         //XXX: TODO What are you going to do here?
         // On subscribe send the empty world, this will notify the server that it needs to send the current entire world
-        socket.send(JSON.stringify({"World:" : world}))
+        socket.send(JSON.stringify({"Get World:" : world}))
     };
     socket.onerror = function(msg) {
         debug("WebSocket Error:" + msg.data);
