@@ -3,7 +3,7 @@
   <head> 
     <title>Websockets Assignment</title> 
     <meta charset="utf-8" /> 
-    <meta content='width=device-width; height=device-height; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;' name='viewport' />
+    <meta content='width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=0,' name='viewport' />
     <meta name="viewport" content="width=device-width" />
     <meta name="license" content="
         Copyright 2013 Google, Abram Hindle
@@ -43,6 +43,13 @@ function debug(str) {
 debug("Test");
 
 world = {};
+
+function randomColour() {
+    // #FFFFFFF to decimal is 16777215 so that will be the largest number we can draw as a colour.
+    var randColour = Math.floor(Math.random()*16777215).toString(16);
+    randColour = '#' + randColour
+    return randColour;
+}
 
 //XXX: TODO Make this prettier!
 function drawCircle(context,entity) {
@@ -125,6 +132,7 @@ function addEntity(entity, data) {
     world[entity] = data;
     drawNextFrame(); // (but should we?)
     //XXX: Send a XHTML Request that updates the entity you just modified!
+    socket.send(JSON.stringify({ [entity] : data})) // send the new circle that was just made to the server
 }
 var counter = 0;
 function addEntityWithoutName(data) {
@@ -239,7 +247,7 @@ mouse.mouseuppers.push(function(x,y,clicked,e) {
 });
 
 mouse.mousedraggers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'green',
+    addEntityWithoutName({'x':x,'y':y,'colour':randomColour(),
                           'radius':10});
 });
 
@@ -254,6 +262,8 @@ function wsSetup() {
     socket = new WebSocket(url);
     socket.onopen = function() {
         //XXX: TODO What are you going to do here?
+        // On subscribe send the empty world, this will notify the server that it needs to send the current entire world
+        socket.send(JSON.stringify({"World:" : world}))
     };
     socket.onerror = function(msg) {
         debug("WebSocket Error:" + msg.data);
@@ -261,7 +271,13 @@ function wsSetup() {
     socket.onmessage = function(msg) {  
         try {
             debug("WebSocket Recv:" + msg.data);
-            //XXX: TODO What are you going to do here?            
+            //XXX: TODO What are you going to do here?
+            // Parse the message from the server and update the local world based on the received object(s)
+            var parsedMsg = JSON.parse(msg.data)
+            for (var item in parsedMsg) {
+                world[item] = parsedMsg[item]
+            }
+            drawNextFrame() // Render the updated world
         } catch (e) {
             alert("socket on message: " + e);
         }

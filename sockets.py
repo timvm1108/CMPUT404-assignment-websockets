@@ -70,9 +70,13 @@ def send_all_json(entity):
 
 def set_listener( entity, data ):
     ''' do something with the update ! '''
+    #send_all_json({entity, data})
+    # Using send_all_json and clients to handle the updates to each client
+    pass
 
 myWorld.add_set_listener( set_listener )
 
+# Using code provided in the the CMPUT 404 examples, found at: https://github.com/uofa-cmput404/cmput404-slides/tree/master/examples/WebSocketsExamples
 class Client:
 
     def __init__(self):
@@ -82,27 +86,40 @@ class Client:
         self.queue.put_nowait(v)
 
     def get(self):
-        self.queue.get()
+        return self.queue.get()
         
 @app.route('/')
 def hello():
     '''Return something coherent here.. perhaps redirect to /static/index.html '''
-    return flask.redirect("/static/index.html", 302)
+    return flask.redirect("/static/index.html", 301)
 
 def read_ws(ws,client):
     '''A greenlet function that reads from the websocket and updates the world'''
     # XXX: TODO IMPLEMENT ME
     try:
         while True:
-            message = ws.receive()
+            message = ws.receive() # Recieve message from the websocket
             print("RECV:", message)
+            # If the message is not noe, begin process of updating or returning the world
             if message:
                 entity = json.loads(message)
-                send_all_json(entity)
+                # Run through items in the message sent
+                for key, value in entity.items():
+                    # Check that the value is not empty, client will send an empty value when it needs to get the entire world on subscribe
+                    if not value:
+                        # If the client just subscribed, send the current state of the world
+                        current_world = json.dumps(myWorld.world())
+                        ws.send(current_world)
+                    else:
+                        # If the client is sending an update, update the world and send the update to all of the clients
+                        myWorld.set(key, value)
+                        new_circle = {key: myWorld.get(key)}
+                        send_all_json(new_circle)
             else:
                 break
-    except:
+    except Exception as e:
         '''Done'''
+        pass
 
 @sockets.route('/subscribe')
 def subscribe_socket(ws):
@@ -111,9 +128,10 @@ def subscribe_socket(ws):
     # XXX: TODO IMPLEMENT ME
     client = Client()
     clients.append(client)
-    g = gevent.spawn(read_ws, client)
+    g = gevent.spawn(read_ws, ws, client) # Spawn a gevent
     try:
         while True:
+            # Send the queue to the websocket client
             message = client.get()
             ws.send(message)
     except Exception as e:
