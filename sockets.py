@@ -104,16 +104,16 @@ def read_ws(ws,client):
             if message:
                 entity = json.loads(message)
                 # Run through items in the message sent
-                for key, value in entity.items():
+                for item in entity:
                     # Check that the value is not empty, client will send an empty value when it needs to get the entire world on subscribe
-                    if not value:
+                    if not entity[item]:
                         # If the client just subscribed, send the current state of the world
                         current_world = json.dumps(myWorld.world())
                         ws.send(current_world)
                     else:
                         # If the client is sending an update, update the world and send the update to all of the clients
-                        myWorld.set(key, value)
-                        new_circle = {key: myWorld.get(key)}
+                        myWorld.set(item, entity[item])
+                        new_circle = {item: myWorld.get(item)}
                         send_all_json(new_circle)
             else:
                 break
